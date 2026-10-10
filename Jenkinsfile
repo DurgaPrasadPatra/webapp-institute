@@ -1,47 +1,74 @@
-pipeline{
-      agent {
-      label  'nodedockerhost'
-      }
-     
-     tool{
-      JAVA_HOME 'jdk17'
-      MAVEN_HOME 'maven'
-     }
-     
-     environment{
-   APP_NAME='webapp-institute"
-    IMAGE_NAME = 'instituteweb:v1.0'
-    CONTAINER_NAME= 'institutecontainer"
 
+pipeline {
+    agent {
+        label 'nodedockerhost'
     }
 
-   stages{
-      stage ('checkout git') {
-     steps{ git url: "https://github.com/DurgaPrasadPatra/webapp-institute.git"}
-    }
-    stage ('compile package') {
-         steps{sh 'mvn clean package'}
-     }
-
-     stage ('deploy') {
-     steps{sh 'mvn clean package'}
-     }
-    
-      stage ('image build') {
-       steps{
-       sh 'docker build -t  ${IMAGE_NAME} . '
-       echo "Image build succes ${IMAGE_NAME}
+    tools {
+        jdk 'jdk17'
+        maven 'maven'
     }
 
-    stage ('deploying container') {
-   steps{
-    sh 'docker rm -f  ${CONTAINER_NAME}' || true 
-  
-   sh 'docker run -itd --name ${CONTAINER_NAME}  -p 8080:8080  ${IMAGE_NAME}  '
-   echo "container running successfully"
+    environment {
+        APP_NAME       = 'webapp-institute'
+        IMAGE_NAME     = 'instituteweb:v1.0'
+        CONTAINER_NAME = 'institutecontainer'
+    }
+
+    stages {
+        stage('Checkout Git') {
+            steps {
+                git url: 'https://github.com/DurgaPrasadPatra/webapp-institute.git'
+            }
+        }
+
+        stage('Verify Tools') {
+            steps {
+                sh 'java -version'
+                sh 'mvn -version'
+                sh 'docker --version'
+            }
+        }
+
+        stage('Compile and Package') {
+            steps {
+                sh 'mvn clean package'
+                sh 'ls -lh target/'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t "$IMAGE_NAME" .'
+                echo 'Docker image built successfully'
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                sh '''
+                    docker rm -f "$CONTAINER_NAME" || true
+
+                    docker run -d \
+                        --name "$CONTAINER_NAME" \
+                        --restart unless-stopped \
+                        -p 8081:8080 \
+                        "$IMAGE_NAME"
+
+                    docker ps --filter "name=$CONTAINER_NAME"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully'
+        }
+
+        failure {
+            echo 'Pipeline failed. Check the stage logs.'
+        }
+    }
 }
- post{
-success{echo 'Pipeline is success full'}
-failure{echo 'Pipeline is NOT success full'}
-}
-}
+
