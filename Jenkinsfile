@@ -11,7 +11,7 @@ pipeline {
 
     environment {
         APP_NAME       = 'webapp-institute'
-        IMAGE_NAME     = 'instituteweb:v1.0'
+        IMAGE_NAME     = 'devopsdurga/instituteweb:v1.0'
         CONTAINER_NAME = 'institutecontainer'
     }
 
@@ -59,6 +59,48 @@ pipeline {
                 '''
             }
         }
+
+        stage('Push Image to Docker Hub') {
+         steps {
+
+        // Step 1: Retrieve Docker Hub credentials securely from Jenkins.
+        // The credential ID must match the ID configured in Jenkins Credentials.
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'dockerhub-creds',
+                usernameVariable: 'DOCKERHUB_USER',
+                passwordVariable: 'DOCKERHUB_TOKEN'
+            )
+        ]) {
+            sh '''
+                # Step 2: Disable shell command tracing to reduce
+                # the risk of accidentally exposing sensitive values.
+                set +x
+
+                # Step 3: Pass the Docker Hub access token to Docker
+                # through standard input instead of a command-line argument.
+                # This authenticates the Docker client on the agent.
+                printf '%s' "$DOCKERHUB_TOKEN" |
+                    docker login \
+                        --username "$DOCKERHUB_USER" \
+                        --password-stdin
+
+                # Step 4: Push the previously built image to Docker Hub.
+                # IMAGE_NAME must include your Docker Hub username,
+                # repository name, and tag.
+                # Example: mydockeruser/instituteweb:v1.0
+                docker push "$IMAGE_NAME"
+
+                # Step 5: Log out after a successful push to remove
+                # the local Docker login session.
+                docker logout
+            '''
+        }
+
+        // Step 6: Print a success message if the commands above complete.
+        echo 'Docker image pushed to Docker Hub successfully'
+    }
+}
     }
 
     post {
