@@ -18,7 +18,7 @@ pipeline {
     stages {
         stage('Checkout Git') {
             steps {
-                git url: 'https://github.com/DurgaPrasadPatra/webapp-institute.git'
+                git branch:'main' , url: 'https://github.com/DurgaPrasadPatra/webapp-institute.git'
             }
         }
 
